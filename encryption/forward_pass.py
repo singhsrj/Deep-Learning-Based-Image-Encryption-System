@@ -3,18 +3,30 @@ import numpy as np
 import math
 
 # %%
-def update_df(R:float , c , d):
-    f = np.int64(R) 
-    z= c %32
-    if z!=0:
-        d = (c << (d%z))^d
+def update_df(R: float, c, d):
+    """
+    Update (f, d) pair safely. Prevent overflow or invalid shifts.
+    """
+    # Force all to int64
+    f = np.int64(int(R) & 0xFFFFFFFFFFFFFFFF)
+    c = np.int64(c)
+    d = np.int64(d)
+
+    z = int(c % 32)
+    if z != 0:
+        shift_val = int(abs(d) % z)  # ensure shift count valid
+        d = np.int64((int(c) << shift_val) ^ int(d))
     else:
-        d= d^c
-    d = d^ (d<<21)
-    d = d ^ (d>>35)
-    d  =d ^ (d<<4)
-    
-    return [f ,d]
+        d = np.int64(int(d) ^ int(c))
+
+    # Xorshift-like pattern with masking to 64 bits
+    mask = np.int64(0xFFFFFFFFFFFFFFFF)
+    d = np.int64((d ^ (d << 21)) & mask)
+    d = np.int64((d ^ (d >> 35)) & mask)
+    d = np.int64((d ^ (d << 4)) & mask)
+
+    return f, d
+
 
 # %%
 update_df(2.345647768 , 157 , 524592858)
@@ -23,75 +35,93 @@ update_df(2.345647768 , 157 , 524592858)
 # ---- Main: Substitute function (forward + backward) ----
 def Substitute(B):
     """
-    Forward and backward substitution for one image block.
-    B: list/array of pixel values [b1, b2, ..., bn]
-    Returns: list of final substituted pixels (out)
+    Forward + backward substitution with overflow protection.
+    B: list of pixel values [b1, b2, ..., bn]
+    Returns: encrypted block
     """
     n = len(B)
     out1 = []
 
+    f = np.int64(1)
+    d = np.int64(1)
+
+    def safe_R(d, f):
+        # ensure no NaN or Inf
+        if not math.isfinite(float(d)): d = np.int64(1)
+        if not math.isfinite(float(f)): f = np.int64(1)
+        d_abs = min(abs(int(d)), 2**31 - 1)
+        f_abs = min(abs(int(f)), 2**31 - 1)
+        val = d_abs / (4.0 * f_abs + 1e-9)
+        return 17.32 * math.sqrt(val if val >= 0 else 0.0)
+
     # --- Forward pass ---
-    f = np.int64(1)  # initial f (non-zero)
-    d = np.int64(1)  # initial d (non-zero)
-
     for bi in B:
-        R = 17.32 * math.sqrt(abs(d) / (4 * abs(f) + 1e-9))
-
+        R = safe_R(d, f)
         k = int(R) % 256
-        si = k ^ bi
+        si = k ^ int(bi)
         out1.append(si)
         f, d = update_df(R, bi, d)
 
     # --- Backward pass ---
     out = []
-    f = np.int64(1)  # re-initialize f
-    d = np.int64(1)  # re-initialize d
+    f = np.int64(1)
+    d = np.int64(1)
 
-    for si in reversed(out1):  # process from right to left
-        R = 17.32 * math.sqrt(abs(d) / (4 * abs(f) + 1e-9))
-
+    for si in reversed(out1):
+        R = safe_R(d, f)
         k = int(R) % 256
-        ci = k ^ si
-        out.insert(0, ci)  # prepend to maintain original order
+        ci = k ^ int(si)
+        out.insert(0, ci)
         f, d = update_df(R, si, d)
 
-    return out
+    return [int(x) & 0xFF for x in out]
+
 
 
 # %%
 def Substitute_Inv(out):
     """
-    Inverse substitution for decryption.
-    out: encrypted block [c1, c2, ..., cn]
-    Returns: original block B
+    Robust inverse of Substitute().
+    Recovers original block from encrypted block.
     """
-    n = len(out)
+    out = [int(x) & 0xFF for x in out]
     out1 = []
 
-    # --- Backward pass first ---
     f = np.int64(1)
     d = np.int64(1)
 
-    for ci in reversed(out):  # i = n down to 1
-        R = 17.32 * math.sqrt(d / (4 * f))
+    def safe_R(d, f):
+        if not math.isfinite(float(d)): d = np.int64(1)
+        if not math.isfinite(float(f)): f = np.int64(1)
+        d_abs = min(abs(int(d)), 2**31 - 1)
+        f_abs = min(abs(int(f)), 2**31 - 1)
+        val = d_abs / (4.0 * f_abs + 1e-9)
+        return 17.32 * math.sqrt(val if val >= 0 else 0.0)
+
+    # --- Undo backward pass ---
+    for ci in reversed(out):
+        R = safe_R(d, f)
         k = int(R) % 256
-        si = k ^ ci
-        out1.insert(0, si)  # prepend to maintain order
+        si = k ^ int(ci)
+        out1.insert(0, si)
         f, d = update_df(R, si, d)
 
-    # --- Forward pass second ---
+    # --- Undo forward pass ---
     B = []
-    f = np.int64(1)  # re-initialize
+    f = np.int64(1)
     d = np.int64(1)
 
-    for si in out1:  # i = 1 to n
-        R = 17.32 * math.sqrt(d / (4 * f))
+    for si in out1:
+        R = safe_R(d, f)
         k = int(R) % 256
-        bi = k ^ si
+        bi = k ^ int(si)
         B.append(bi)
         f, d = update_df(R, bi, d)
 
-    return B
+    return [int(x) & 0xFF for x in B]
+
+
+
 
 
 # %%
