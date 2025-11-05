@@ -1,17 +1,75 @@
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten
 import hashlib
-
-# %%
+import galois
 import numpy as np
 from PIL import Image
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten
 
-image = Image.open("images.jpg")
-image = image.resize((256,256))
 
+# Define BCH parameters (standard + strong code)
+GF = galois.GF(2)
+bch = galois.BCH(255, 131)
+
+def fuzzy_key_gen(biometric_array):
+    """
+    Input: biometric feature array (noisy source)
+    Output: AES key K, helper data P
+    """
+
+    # Step 1: Convert features → binary vector
+    # (flatten & threshold)
+    bio_bits = (biometric_array.flatten() % 2).astype(np.uint8)
+
+    # Fit to BCH length
+    bio_bits = bio_bits[:bch.n] if bio_bits.size >= bch.n else \
+               np.pad(bio_bits, (0, bch.n - bio_bits.size))
+
+    # Step 2: Encode to BCH codeword
+    codeword = bch.encode(bio_bits[:bch.k])
+
+    # Step 3: Helper Data = noisy XOR between bio and codeword
+    P = (bio_bits ^ codeword).astype(np.uint8)
+
+    # Step 4: Hash codeword → AES 256-bit key
+    K = hashlib.sha256(codeword.tobytes()).digest()
+
+    return K, P
+
+def fuzzy_key_rep(bio_again_array, P):
+    """
+    Reconstruct AES key during decryption
+    """
+    bio_bits = (bio_again_array.flatten() % 2).astype(np.uint8)
+    bio_bits = bio_bits[:bch.n] if bio_bits.size >= bch.n else \
+               np.pad(bio_bits, (0, bch.n - bio_bits.size))
+
+    # Recover corrected codeword
+    noisy_codeword = (bio_bits ^ P).astype(np.uint8)
+    codeword = bch.decode(noisy_codeword)
+
+    K = hashlib.sha256(codeword.tobytes()).digest()
+    return K
+
+def extract_stable_features(image):
+    """
+    Use your CNN model to produce stable features
+    Output: binary vector (length >= 255)
+    """
+    img = np.expand_dims(image, axis=0)
+    features = model.predict(img)[0]  # shape ~ (some float vector)
+
+    # Quantize + Binarize
+    feat_norm = (features - features.min()) / (features.max() - features.min())
+    bin_bits = (feat_norm > 0.5).astype(np.uint8)
+
+    # Fit BCH length by padding/truncation
+    bin_bits = bin_bits[:bch.n] if bin_bits.size >= bch.n else \
+               np.pad(bin_bits, (0, bch.n - bin_bits.size))
+
+    return bin_bits
+
+image = Image.open("images.jpg").resize((256,256))
 image_array = np.array(image)
-# %%
-
 
 # Example: input image shape = 128x128 with 3 color channels (RGB)
 model = Sequential([
