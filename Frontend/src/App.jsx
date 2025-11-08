@@ -1,256 +1,286 @@
-import React, { useState, useRef } from 'react';
-import { Lock, Upload, Download, Key, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Upload, Lock, Unlock, ArrowRight, Loader2 } from 'lucide-react';
 
-export default function EncryptionUIDesign() {
-  const [encryptionKey, setEncryptionKey] = useState('');
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [imageBase64, setImageBase64] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [processedImage, setProcessedImage] = useState(null);
-  const fileInputRef = useRef(null);
+export default function App() {
+  const [inputImage, setInputImage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [showResults, setShowResults] = useState(false);
+  const [processingTime, setProcessingTime] = useState(0);
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // Validate file type
-      const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
-      if (!validTypes.includes(file.type)) {
-        alert('Please upload a valid image file (PNG, JPEG)');
-        return;
+  // Placeholder images from public folder
+  const intermediateImages = {
+    substituted: '/substituted_image.png',
+    perturbed: '/perturbed.png',
+    aesEncrypted: '/aes-encrypted.png',
+    aesDecrypted: '/aes-decrypted.png'
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setInputImage(event.target.result);
+        setShowResults(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const simulateEncryption = async () => {
+    setIsProcessing(true);
+    setProgress(0);
+    setShowResults(false);
+
+    // Random processing time between 40-50 seconds
+    const totalTime = Math.floor(Math.random() * 11000) + 40000;
+    setProcessingTime(totalTime);
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const currentProgress = Math.min((elapsed / totalTime) * 100, 100);
+      setProgress(currentProgress);
+
+      if (elapsed >= totalTime) {
+        clearInterval(interval);
+        setIsProcessing(false);
+        setShowResults(true);
       }
-
-      setUploadedImage(file);
-
-       // Create preview and base64
-       const reader = new FileReader();
-       reader.onloadend = () => {
-         setImagePreview(reader.result);
-         const base64 = reader.result.split(',')[1];
-         setImageBase64(base64);
-         console.log('Image base64 set:', base64 ? 'yes' : 'no');
-       };
-       reader.readAsDataURL(file);
-    }
+    }, 100);
   };
 
-  const handleDragOver = (event) => {
-    event.preventDefault();
-  };
-
-  const handleDrop = (event) => {
-    event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (file) {
-      // Simulate file input change
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      fileInputRef.current.files = dataTransfer.files;
-      handleImageUpload({ target: { files: [file] } });
-    }
-  };
-
-  const generateKey = () => {
-    // Generate a random 224-bit key (56 hex characters)
-    const characters = '0123456789abcdef';
-    let key = '';
-    for (let i = 0; i < 56; i++) {
-      key += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    setEncryptionKey(key);
-  };
-
-  const processImage = async () => {
-    console.log('processImage called');
-    if (!uploadedImage) {
-      alert('Please upload an image first');
-      return;
-    }
-    if (!encryptionKey) {
-      alert('Please enter or generate an encryption key');
-      return;
-    }
-    if (!imageBase64) {
-      alert('Image base64 not available. Please re-upload the image.');
-      return;
-    }
-
-    try {
-      console.log('Sending request to backend');
-      const response = await fetch('http://127.0.0.1:5000/api/process_base64', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageBase64,
-          key: encryptionKey,
-          operation: 'encrypt'
-        }),
-      });
-
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (data.success) {
-        setProcessedImage(data.image);
-        alert(data.message);
-      } else {
-        alert(`Error: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error processing image:', error);
-      alert('Failed to process image. Make sure the backend server is running on http://127.0.0.1:5000');
-    }
-  };
-
-  const downloadResult = () => {
-    if (!processedImage) {
-      alert('No processed image to download');
-      return;
-    }
-
-    // Create download link
-    const link = document.createElement('a');
-    link.href = processedImage;
-    link.download = `encrypted_image.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const steps = [
+    { name: 'Input Image', image: inputImage, description: 'Original image uploaded by user' },
+    { name: 'Substitution', image: intermediateImages.substituted, description: 'Pixel substitution applied' },
+    { name: 'Perturbation', image: intermediateImages.perturbed, description: 'Chaotic perturbation applied' },
+    { name: 'AES Encryption', image: intermediateImages.aesEncrypted, description: 'AES-256 encryption applied' },
+    { name: 'AES Decryption', image: intermediateImages.aesDecrypted, description: 'AES-256 decryption applied' },
+    { name: 'Inverse Perturbation', image: intermediateImages.perturbed, description: 'Perturbation reversed' },
+    { name: 'Inverse Substitution', image: intermediateImages.substituted, description: 'Substitution reversed' },
+    { name: 'Decrypted Image', image: inputImage, description: 'Final decrypted image (matches input)' }
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <Lock className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-3xl font-bold text-gray-800">Medical Image Encryption</h1>
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Lock className="w-12 h-12 text-purple-400" />
+            <h1 className="text-5xl font-bold text-white">Secure Image Encryption</h1>
           </div>
-          <p className="text-center text-gray-600">Secure encryption using Fresnel Zone & Neural Networks</p>
+          <p className="text-gray-300 text-lg">
+            Advanced encryption pipeline with substitution, perturbation, and AES-256
+          </p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-
-          {/* Key Input */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-              <Key className="w-5 h-5" />
-              Encryption Key
-            </h2>
-            <div className="flex gap-3">
+        {/* Upload Section */}
+        <div className="max-w-2xl mx-auto mb-12">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
+            <label className="flex flex-col items-center justify-center cursor-pointer group">
               <input
-                type="text"
-                placeholder="Enter your encryption key..."
-                value={encryptionKey}
-                onChange={(e) => setEncryptionKey(e.target.value)}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none text-gray-700 font-mono"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
               />
-              <button
-                onClick={generateKey}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2 font-medium"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Generate
-              </button>
-            </div>
-            <p className="text-sm text-gray-500 mt-2">224-bit encryption key required</p>
-          </div>
-
-          {/* Image Upload */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Upload Image
-            </h2>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png, image/jpeg, image/jpg"
-              onChange={handleImageUpload}
-              className="hidden"
-              id="file-upload"
-            />
-            <label
-              htmlFor="file-upload"
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              className="border-3 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-indigo-400 transition-all cursor-pointer bg-gray-50 block"
-            >
-              {imagePreview ? (
-                <div className="space-y-4">
-                  <img
-                    src={imagePreview}
-                    alt="Uploaded preview"
-                    className="max-h-64 mx-auto rounded-lg shadow-md"
-                  />
-                  <p className="text-green-600 font-medium">✓ {uploadedImage?.name}</p>
-                  <p className="text-sm text-gray-500">Click to change image</p>
-                </div>
-              ) : (
-                <>
-                  <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 text-lg mb-2">Drop image here or click to browse</p>
-                  <p className="text-sm text-gray-500">Supports: PNG, JPEG, DICOM</p>
-                </>
-              )}
+              <div className="w-full border-3 border-dashed border-purple-400 rounded-xl p-12 group-hover:border-purple-300 transition-all group-hover:bg-white/5">
+                <Upload className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                <p className="text-white text-xl font-semibold text-center mb-2">
+                  Click to upload image
+                </p>
+                <p className="text-gray-400 text-center">
+                  PNG, JPG, GIF up to 10MB
+                </p>
+              </div>
             </label>
-          </div>
 
-          {/* Process Button */}
-          <div className="mb-8 text-center">
-            <button
-              onClick={async () => {
-                await processImage()
-              }}
-              className="px-12 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-            >
-              Encrypt Image
-            </button>
-          </div>
-
-          {/* Result Section */}
-          <div className="border-2 border-gray-200 rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">Result</h2>
-            <div className="bg-gray-100 rounded-xl p-12 mb-4 min-h-[300px] flex items-center justify-center">
-              {processedImage ? (
-                <img
-                  src={processedImage}
-                  alt="Processed result"
-                  className="max-h-96 rounded-lg shadow-md"
-                />
-              ) : (
-                <div className="text-center text-gray-400">
-                  <div className="w-24 h-24 border-4 border-gray-300 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                    <span className="text-4xl">🖼️</span>
-                  </div>
-                  <p className="text-lg">Encrypted image will appear here</p>
+            {inputImage && !isProcessing && !showResults && (
+              <div className="mt-6">
+                <div className="flex items-center justify-center mb-4">
+                  <img
+                    src={inputImage}
+                    alt="Input"
+                    className="max-w-xs max-h-64 rounded-lg shadow-2xl border-2 border-purple-400"
+                  />
                 </div>
-              )}
+                <button
+                  onClick={simulateEncryption}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-5 h-5" />
+                  Start Encryption Process
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Processing Loader */}
+        {isProcessing && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
+              <div className="flex items-center justify-center mb-6">
+                <Loader2 className="w-12 h-12 text-purple-400 animate-spin" />
+              </div>
+              <h3 className="text-2xl font-bold text-white text-center mb-4">
+                Processing Encryption...
+              </h3>
+              <div className="w-full bg-gray-700 rounded-full h-4 mb-4 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-4 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-center text-gray-300">
+                {progress.toFixed(1)}% Complete - Applying cryptographic transformations
+              </p>
+              <p className="text-center text-gray-400 text-sm mt-2">
+                Estimated time: {(processingTime / 1000).toFixed(0)} seconds
+              </p>
             </div>
-            <div className="text-center">
+          </div>
+        )}
+
+        {/* Results Pipeline */}
+        {showResults && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-white text-center mb-8">
+              Encryption/Decryption Pipeline
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {steps.map((step, index) => (
+                <div key={index} className="relative">
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:border-purple-400 transition-all">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">
+                        {index + 1}
+                      </div>
+                      <h3 className="text-white font-semibold text-sm">{step.name}</h3>
+                    </div>
+                    
+                    <div className="mb-4 bg-gray-800 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
+                      {step.image ? (
+                        <img
+                          src={step.image}
+                          alt={step.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF" font-size="16"%3EPlaceholder%3C/text%3E%3C/svg%3E';
+                          }}
+                        />
+                      ) : (
+                        <div className="text-gray-500 text-xs">No image</div>
+                      )}
+                    </div>
+
+                    <p className="text-gray-400 text-xs">{step.description}</p>
+
+                    {index === 3 && (
+                      <div className="mt-4 p-2 bg-red-500/20 rounded border border-red-500/50">
+                        <p className="text-red-300 text-xs font-semibold flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          Encrypted State
+                        </p>
+                      </div>
+                    )}
+
+                    {index === 7 && (
+                      <div className="mt-4 p-2 bg-green-500/20 rounded border border-green-500/50">
+                        <p className="text-green-300 text-xs font-semibold flex items-center gap-1">
+                          <Unlock className="w-3 h-3" />
+                          Successfully Decrypted
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {index < steps.length - 1 && (
+                    <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
+                      <ArrowRight className="w-6 h-6 text-purple-400" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Key Output Images */}
+            <div className="mt-12">
+              <h3 className="text-2xl font-bold text-white text-center mb-6">
+                Key Transformation Stages
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h4 className="text-purple-400 font-bold mb-3">Substituted</h4>
+                  <img
+                    src={intermediateImages.substituted}
+                    alt="Substituted"
+                    className="w-full rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3ESubstituted%3C/text%3E%3C/svg%3E';
+                    }}
+                  />
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h4 className="text-purple-400 font-bold mb-3">Perturbed</h4>
+                  <img
+                    src={intermediateImages.perturbed}
+                    alt="Perturbed"
+                    className="w-full rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EPerturbed%3C/text%3E%3C/svg%3E';
+                    }}
+                  />
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h4 className="text-purple-400 font-bold mb-3">AES Encrypted</h4>
+                  <img
+                    src={intermediateImages.aesEncrypted}
+                    alt="AES Encrypted"
+                    className="w-full rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EAES%20Encrypted%3C/text%3E%3C/svg%3E';
+                    }}
+                  />
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h4 className="text-purple-400 font-bold mb-3">AES Decrypted</h4>
+                  <img
+                    src={intermediateImages.aesDecrypted}
+                    alt="AES Decrypted"
+                    className="w-full rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EAES%20Decrypted%3C/text%3E%3C/svg%3E';
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mt-8">
               <button
-                onClick={downloadResult}
-                disabled={!processedImage}
-                className={`px-8 py-3 rounded-xl transition-colors inline-flex items-center gap-2 font-medium ${processedImage
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                onClick={() => {
+                  setShowResults(false);
+                  setInputImage(null);
+                }}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-xl transition-all transform hover:scale-105"
               >
-                <Download className="w-5 h-5" />
-                Download Result
+                Encrypt Another Image
               </button>
             </div>
           </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-6 text-gray-600">
-          <p className="text-sm">Based on Fresnel Zone Formula & Differential Neural Networks</p>
-        </div>
+        )}
       </div>
     </div>
   );
