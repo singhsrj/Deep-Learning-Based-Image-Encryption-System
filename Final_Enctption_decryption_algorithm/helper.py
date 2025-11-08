@@ -75,7 +75,7 @@ def enroll_biometric(biometric_image_path):
     """
     print(f"[Enrollment] Processing: {biometric_image_path}")
     
-    # Extract and binarize features
+    # Extract and binarize features -  from vgg16 model pre-trained weights
     feats = features_from_image_path(biometric_image_path)
     bio_bits = float_features_to_bits(feats, n_bits=bch.n)
     
