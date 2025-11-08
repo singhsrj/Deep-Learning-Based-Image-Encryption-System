@@ -1,0 +1,58 @@
+@startuml Encryption System
+
+|User|
+start
+:Upload Image;
+
+|Image Preprocessing|
+:Convert to Grayscale;
+:Resize to 128x128;
+:Normalize pixel values;
+
+|Key Generation|
+fork
+    :Generate Initial Key;
+    :Create 256-bit AES Key;
+fork again
+    :Neural Network Key Generation;
+    :Process Image through CNN;
+    :Generate Features;
+    :Hash Features (SHA-256);
+end fork
+:Combine Keys;
+
+|Substitution Phase|
+:Initialize Fresnel Parameters;
+:Generate S-Box using Key;
+fork
+    :Forward Pass Row-wise;
+    :Apply Substitution Box;
+fork again
+    :Update Fresnel Parameters;
+end fork
+:Get Substituted Image;
+
+|Perturbation Phase|
+:Initialize Logistic Map;
+:Generate Chaotic Sequence;
+fork
+    :Pixel Position Scrambling;
+    :Apply Position Updates;
+fork again
+    :Update Chaotic Parameters;
+end fork
+:Get Perturbed Image;
+
+|AES Encryption|
+:Convert Image to Bytes;
+:Generate IV (Initialization Vector);
+:Pad Data to 16-byte blocks;
+:Apply AES-CBC Encryption;
+:Get Encrypted Bytes;
+
+|Output|
+:Store Encrypted Data;
+:Save Metadata (IV, Shape);
+stop
+
+@enduml
