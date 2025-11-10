@@ -470,3 +470,22 @@ if __name__ == "__main__":
         print("✗✗✗ DECRYPTION FAILED ✗✗✗")
         print(f"Error: {e}")
         print("="*70)
+
+
+
+
+def ciphertext_to_image(cipher_bytes, shape):
+    """Map ciphertext bytes to a 2D uint8 array with given shape (H,W)."""
+    H, W = shape
+    total = H * W
+    arr = np.frombuffer(cipher_bytes, dtype=np.uint8)
+
+    # If AES added padding/overhead, trim to first H*W bytes
+    if arr.size >= total:
+        arr = arr[:total]
+    else:
+        # Rare: if shorter (shouldn’t happen with your pipeline), pad with random-like tail
+        pad = np.random.randint(0, 256, size=(total - arr.size,), dtype=np.uint8)
+        arr = np.concatenate([arr, pad])
+
+    return arr.reshape(H, W)

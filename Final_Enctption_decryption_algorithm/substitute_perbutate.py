@@ -332,6 +332,7 @@ class PixelPerturbation:
         Returns:
             Perturbed image
         """
+        
         height, width = image.shape
         self.height = height
         self.width = width
