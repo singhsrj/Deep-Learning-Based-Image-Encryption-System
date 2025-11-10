@@ -101,29 +101,46 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900">
       <div className="container mx-auto px-4 py-4 sm:py-8">
         {/* Hero Section */}
-        <div className="text-center mb-4 sm:mb-8 py-2 sm:py-6">
-          <div className="flex flex-col items-center justify-center mb-4 sm:mb-6">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 sm:mb-6">
-              <Lock className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-500" />
-            </div>
-            <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 px-4">
-              Biometric Image Encryption
+        <div className="relative mb-4 sm:mb-8 py-2 sm:py-6">
+          {/* Main Hero Content */}
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 px-4 leading-tight">
+              Biometric-Based Image
+              <span className="block text-emerald-400 mt-1 sm:mt-2">Encryption System</span>
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-gray-400 max-w-3xl px-4 leading-relaxed">
-              Generate secure 256-bit keys from biometric data and encrypt images with AES-256
+            
+            <p className="text-sm sm:text-base md:text-lg text-gray-400 max-w-2xl mx-auto px-4 leading-relaxed mb-6 sm:mb-8">
+              A comprehensive encryption solution utilizing biometric-based key and AES-256 encryption. This system integrates advanced cryptographic techniques with neural network processing to provide secure image protection.
             </p>
-            <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-3 sm:gap-4 px-4">
-              <div className="flex items-center gap-2 bg-gray-800/50 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs sm:text-sm text-gray-300">Biometric Key Generation</span>
+
+            {/* Feature Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto px-4">
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-3 sm:p-4 hover:border-emerald-500/30 transition-all">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-semibold text-white mb-1 sm:mb-2">AES-256 Encryption</h3>
+                <p className="text-xs text-gray-400">Industry-standard encryption algorithm</p>
               </div>
-              <div className="flex items-center gap-2 bg-gray-800/50 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs sm:text-sm text-gray-300">256-bit Encryption</span>
+
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-3 sm:p-4 hover:border-emerald-500/30 transition-all">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs sm:text-sm font-semibold text-white mb-1 sm:mb-2">Biometric Keys</h3>
+                <p className="text-xs text-gray-400">Secure key generation from biometrics</p>
               </div>
-              <div className="flex items-center gap-2 bg-gray-800/50 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs sm:text-sm text-gray-300">Secure Pipeline</span>
+
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-3 sm:p-4 hover:border-emerald-500/30 transition-all">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs sm:text-sm font-semibold text-white mb-1 sm:mb-2">Neural Processing</h3>
+                <p className="text-xs text-gray-400">Advanced deep learning pipeline</p>
               </div>
             </div>
           </div>
