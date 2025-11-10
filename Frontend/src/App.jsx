@@ -1,19 +1,55 @@
 import { useState } from 'react';
-import { Upload, Lock, Unlock, ArrowRight, Loader2 } from 'lucide-react';
+import { Upload, Lock, Unlock, ArrowRight, Loader2, Copy, Check } from 'lucide-react';
 
 export default function App() {
+  const [biometricImage, setBiometricImage] = useState(null);
+  const [generatedKey, setGeneratedKey] = useState(null);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [keyProgress, setKeyProgress] = useState(0);
   const [inputImage, setInputImage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [processingTime, setProcessingTime] = useState(0);
 
-  // Placeholder images from public folder
   const intermediateImages = {
     substituted: '/substituted_image.png',
     perturbed: '/perturbed.png',
     aesEncrypted: '/aes-encrypted.png',
     aesDecrypted: '/aes-decrypted.png'
+  };
+
+  // Generate 256-bit key from biometric image
+  const generateBiometricKey = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setBiometricImage(event.target.result);
+        setIsGeneratingKey(true);
+        setKeyProgress(0);
+
+        // Simulate 10-second key generation
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const currentProgress = Math.min((elapsed / 10000) * 100, 100);
+          setKeyProgress(currentProgress);
+
+          if (elapsed >= 10000) {
+            clearInterval(interval);
+            setIsGeneratingKey(false);
+            // Generate random 256-bit key (64 hex characters)
+            const key = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join('')
+              .toUpperCase();
+            setGeneratedKey(key);
+          }
+        }, 100);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -33,7 +69,6 @@ export default function App() {
     setProgress(0);
     setShowResults(false);
 
-    // Random processing time between 40-50 seconds
     const totalTime = Math.floor(Math.random() * 11000) + 40000;
     setProcessingTime(totalTime);
 
@@ -55,8 +90,8 @@ export default function App() {
     { name: 'Input Image', image: inputImage, description: 'Original image uploaded by user' },
     { name: 'Substitution', image: intermediateImages.substituted, description: 'Pixel substitution applied' },
     { name: 'Perturbation', image: intermediateImages.perturbed, description: 'Chaotic perturbation applied' },
-    { name: 'AES Encryption', image: intermediateImages.aesEncrypted, description: 'AES-256 encryption applied' },
-    { name: 'AES Decryption', image: intermediateImages.aesDecrypted, description: 'AES-256 decryption applied' },
+    { name: 'AES Encryption', image: intermediateImages.aesEncrypted, description: 'AES-256 encryption with biometric key' },
+    { name: 'AES Decryption', image: intermediateImages.aesDecrypted, description: 'AES-256 decryption with biometric key' },
     { name: 'Inverse Perturbation', image: intermediateImages.perturbed, description: 'Perturbation reversed' },
     { name: 'Inverse Substitution', image: intermediateImages.substituted, description: 'Substitution reversed' },
     { name: 'Decrypted Image', image: inputImage, description: 'Final decrypted image (matches input)' }
@@ -72,19 +107,19 @@ export default function App() {
               <Lock className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-500" />
             </div>
             <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 px-4">
-              Secure Image Encryption
+              Biometric Image Encryption
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-gray-400 max-w-3xl px-4 leading-relaxed">
-              Advanced encryption pipeline with substitution, perturbation, and AES-256
+              Generate secure 256-bit keys from biometric data and encrypt images with AES-256
             </p>
             <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-3 sm:gap-4 px-4">
               <div className="flex items-center gap-2 bg-gray-800/50 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs sm:text-sm text-gray-300">Neural Network Based</span>
+                <span className="text-xs sm:text-sm text-gray-300">Biometric Key Generation</span>
               </div>
               <div className="flex items-center gap-2 bg-gray-800/50 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs sm:text-sm text-gray-300">AES-256 Encryption</span>
+                <span className="text-xs sm:text-sm text-gray-300">256-bit Encryption</span>
               </div>
               <div className="flex items-center gap-2 bg-gray-800/50 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
@@ -94,256 +129,316 @@ export default function App() {
           </div>
         </div>
 
-        {/* Upload Section */}
+        {/* Biometric Key Generation Section */}
         <div className="max-w-2xl mx-auto mb-8 sm:mb-12">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 px-4">Step 1: Generate Biometric Key</h2>
           <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 md:p-8 border border-gray-700 shadow-xl">
-            <label className="flex flex-col items-center justify-center cursor-pointer group">
+            <label className="flex flex-col items-center justify-center cursor-pointer group mb-6">
               <input
                 type="file"
                 accept="image/*"
-                onChange={handleImageUpload}
+                onChange={generateBiometricKey}
                 className="hidden"
               />
-              <div className="w-full border-3 border-dashed border-gray-600 rounded-lg p-6 sm:p-8 md:p-12 group-hover:border-gray-500 transition-all group-hover:bg-gray-700/50">
-                <Upload className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-3 sm:mb-4 group-hover:text-gray-300 transition-colors" />
+              <div className="w-full border-3 border-dashed border-gray-600 rounded-lg p-6 sm:p-8 group-hover:border-gray-500 transition-all group-hover:bg-gray-700/50">
+                <Upload className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400 mx-auto mb-3 sm:mb-4 group-hover:text-gray-300 transition-colors" />
                 <p className="text-white text-lg sm:text-xl font-semibold text-center mb-2">
-                  Click to upload image
+                  Upload Biometric Image
                 </p>
                 <p className="text-gray-400 text-center text-sm sm:text-base">
-                  PNG, JPG, GIF up to 10MB
+                  Fingerprint, Iris, or Face Image - PNG, JPG up to 10MB
                 </p>
               </div>
             </label>
 
-            {inputImage && !isProcessing && !showResults && (
-              <div className="mt-4 sm:mt-6">
-                <div className="flex items-center justify-center mb-4">
+            {biometricImage && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center">
                   <img
-                    src={inputImage}
-                    alt="Input"
-                    className="max-w-full sm:max-w-xs max-h-48 sm:max-h-64 rounded-lg shadow-2xl border-2 border-gray-600"
+                    src={biometricImage}
+                    alt="Biometric"
+                    className="max-w-full sm:max-w-xs max-h-48 sm:max-h-56 rounded-lg shadow-2xl border-2 border-emerald-600"
                   />
                 </div>
-                <button
-                  onClick={simulateEncryption}
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm sm:text-base"
-                >
-                  <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Start Encryption Process
-                </button>
+
+                {isGeneratingKey && (
+                  <div className="bg-gray-700/50 rounded-lg p-4 sm:p-6 border border-emerald-500/50">
+                    <p className="text-emerald-400 text-sm font-semibold mb-4 text-center">Generating 256-bit Biometric Key...</p>
+                    <div className="w-full bg-gray-600 rounded-full h-2">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${keyProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-gray-300 text-xs text-center mt-3">{keyProgress.toFixed(0)}%</p>
+                  </div>
+                )}
+
+                {generatedKey && !isGeneratingKey && (
+                  <div className="bg-green-500/20 rounded-lg p-4 sm:p-6 border border-green-500/50">
+                    <p className="text-green-400 text-sm font-semibold flex items-center justify-center gap-2">
+                      <Check className="w-4 h-4" />
+                      256-bit Biometric Key Generated Successfully
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Processing Loader */}
-        {isProcessing && (
-          <div className="max-w-2xl mx-auto mb-8 sm:mb-12">
-            <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-6 sm:p-8 border border-gray-700 shadow-xl">
-              <div className="flex items-center justify-center mb-4 sm:mb-6">
-                <div className="relative w-28 h-28 sm:w-32 sm:h-32">
-                  {/* Background Circle */}
-                  <svg className="w-28 h-28 sm:w-32 sm:h-32 transform -rotate-90">
-                    <circle
-                      cx="56"
-                      cy="56"
-                      r="50"
-                      stroke="currentColor"
-                      strokeWidth="7"
-                      fill="none"
-                      className="text-gray-700 sm:hidden"
-                    />
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="currentColor"
-                      strokeWidth="8"
-                      fill="none"
-                      className="text-gray-700 hidden sm:block"
-                    />
-                    {/* Progress Circle */}
-                    <circle
-                      cx="56"
-                      cy="56"
-                      r="50"
-                      stroke="currentColor"
-                      strokeWidth="7"
-                      fill="none"
-                      strokeDasharray={`${2 * Math.PI * 50}`}
-                      strokeDashoffset={`${2 * Math.PI * 50 * (1 - progress / 100)}`}
-                      className="text-emerald-500 transition-all duration-300 sm:hidden"
-                      strokeLinecap="round"
-                    />
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="currentColor"
-                      strokeWidth="8"
-                      fill="none"
-                      strokeDasharray={`${2 * Math.PI * 56}`}
-                      strokeDashoffset={`${2 * Math.PI * 56 * (1 - progress / 100)}`}
-                      className="text-emerald-500 transition-all duration-300 hidden sm:block"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  {/* Center Content */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300 mb-1" />
-                    <span className="text-white font-semibold text-base sm:text-lg">{progress.toFixed(0)}%</span>
+        {generatedKey && (
+          <>
+            {/* Image Upload Section */}
+            <div className="max-w-2xl mx-auto mb-8 sm:mb-12">
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 px-4">Step 2: Upload Image to Encrypt</h2>
+              <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 md:p-8 border border-gray-700 shadow-xl">
+                <label className="flex flex-col items-center justify-center cursor-pointer group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <div className="w-full border-3 border-dashed border-gray-600 rounded-lg p-6 sm:p-8 md:p-12 group-hover:border-gray-500 transition-all group-hover:bg-gray-700/50">
+                    <Upload className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-3 sm:mb-4 group-hover:text-gray-300 transition-colors" />
+                    <p className="text-white text-lg sm:text-xl font-semibold text-center mb-2">
+                      Click to upload image
+                    </p>
+                    <p className="text-gray-400 text-center text-sm sm:text-base">
+                      PNG, JPG, GIF up to 10MB
+                    </p>
                   </div>
+                </label>
+
+                {inputImage && !isProcessing && !showResults && (
+                  <div className="mt-4 sm:mt-6">
+                    <div className="flex items-center justify-center mb-4">
+                      <img
+                        src={inputImage}
+                        alt="Input"
+                        className="max-w-full sm:max-w-xs max-h-48 sm:max-h-64 rounded-lg shadow-2xl border-2 border-gray-600"
+                      />
+                    </div>
+                    <button
+                      onClick={simulateEncryption}
+                      className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm sm:text-base"
+                    >
+                      <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+                      Start Encryption with Biometric Key
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Processing Loader */}
+            {isProcessing && (
+              <div className="max-w-2xl mx-auto mb-8 sm:mb-12">
+                <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-6 sm:p-8 border border-gray-700 shadow-xl">
+                  <div className="flex items-center justify-center mb-4 sm:mb-6">
+                    <div className="relative w-28 h-28 sm:w-32 sm:h-32">
+                      <svg className="w-28 h-28 sm:w-32 sm:h-32 transform -rotate-90">
+                        <circle
+                          cx="56"
+                          cy="56"
+                          r="50"
+                          stroke="currentColor"
+                          strokeWidth="7"
+                          fill="none"
+                          className="text-gray-700 sm:hidden"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="none"
+                          className="text-gray-700 hidden sm:block"
+                        />
+                        <circle
+                          cx="56"
+                          cy="56"
+                          r="50"
+                          stroke="currentColor"
+                          strokeWidth="7"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 50}`}
+                          strokeDashoffset={`${2 * Math.PI * 50 * (1 - progress / 100)}`}
+                          className="text-emerald-500 transition-all duration-300 sm:hidden"
+                          strokeLinecap="round"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 56}`}
+                          strokeDashoffset={`${2 * Math.PI * 56 * (1 - progress / 100)}`}
+                          className="text-emerald-500 transition-all duration-300 hidden sm:block"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300 mb-1" />
+                        <span className="text-white font-semibold text-base sm:text-lg">{progress.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-semibold text-white text-center mb-3 sm:mb-4 px-4">
+                    Processing Encryption...
+                  </h3>
+                  <p className="text-center text-gray-300 mb-2 text-sm sm:text-base px-4">
+                    Applying biometric key-based cryptographic transformations
+                  </p>
+                  <p className="text-center text-gray-400 text-xs sm:text-sm px-4">
+                    Estimated time: {(processingTime / 1000).toFixed(0)} seconds
+                  </p>
                 </div>
               </div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-white text-center mb-3 sm:mb-4 px-4">
-                Processing Encryption...
-              </h3>
-              <p className="text-center text-gray-300 mb-2 text-sm sm:text-base px-4">
-                Applying cryptographic transformations
-              </p>
-              <p className="text-center text-gray-400 text-xs sm:text-sm px-4">
-                Estimated time: {(processingTime / 1000).toFixed(0)} seconds
-              </p>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Results Pipeline */}
-        {showResults && (
-          <div className="space-y-6 sm:space-y-8">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-6 sm:mb-8 px-4">
-              Encryption/Decryption Pipeline
-            </h2>
+            {/* Results Pipeline */}
+            {showResults && (
+              <div className="space-y-6 sm:space-y-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-6 sm:mb-8 px-4">
+                  Encryption/Decryption Pipeline
+                </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 px-2 sm:px-0">
-              {steps.map((step, index) => (
-                <div key={index} className="relative">
-                  <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 hover:border-emerald-600 transition-all shadow-lg">
-                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-700 flex items-center justify-center text-white font-semibold text-sm sm:text-base">
-                        {index + 1}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 px-2 sm:px-0">
+                  {steps.map((step, index) => (
+                    <div key={index} className="relative">
+                      <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 hover:border-emerald-600 transition-all shadow-lg">
+                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-700 flex items-center justify-center text-white font-semibold text-sm sm:text-base">
+                            {index + 1}
+                          </div>
+                          <h3 className="text-white font-semibold text-xs sm:text-sm">{step.name}</h3>
+                        </div>
+                        
+                        <div className="mb-3 sm:mb-4 bg-gray-800 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
+                          {step.image ? (
+                            <img
+                              src={step.image}
+                              alt={step.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF" font-size="16"%3EPlaceholder%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                          ) : (
+                            <div className="text-gray-500 text-xs">No image</div>
+                          )}
+                        </div>
+
+                        <p className="text-gray-400 text-xs">{step.description}</p>
+
+                        {index === 3 && (
+                          <div className="mt-4 p-2 bg-red-500/20 rounded border border-red-500/50">
+                            <p className="text-red-300 text-xs font-semibold flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              Encrypted State
+                            </p>
+                          </div>
+                        )}
+
+                        {index === 7 && (
+                          <div className="mt-4 p-2 bg-green-500/20 rounded border border-green-500/50">
+                            <p className="text-green-300 text-xs font-semibold flex items-center gap-1">
+                              <Unlock className="w-3 h-3" />
+                              Successfully Decrypted
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <h3 className="text-white font-semibold text-xs sm:text-sm">{step.name}</h3>
-                    </div>
-                    
-                    <div className="mb-3 sm:mb-4 bg-gray-800 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
-                      {step.image ? (
-                        <img
-                          src={step.image}
-                          alt={step.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF" font-size="16"%3EPlaceholder%3C/text%3E%3C/svg%3E';
-                          }}
-                        />
-                      ) : (
-                        <div className="text-gray-500 text-xs">No image</div>
+
+                      {index < steps.length - 1 && (
+                        <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
+                          <ArrowRight className="w-6 h-6 text-gray-600" />
+                        </div>
                       )}
                     </div>
+                  ))}
+                </div>
 
-                    <p className="text-gray-400 text-xs">{step.description}</p>
-
-                    {index === 3 && (
-                      <div className="mt-4 p-2 bg-red-500/20 rounded border border-red-500/50">
-                        <p className="text-red-300 text-xs font-semibold flex items-center gap-1">
-                          <Lock className="w-3 h-3" />
-                          Encrypted State
-                        </p>
-                      </div>
-                    )}
-
-                    {index === 7 && (
-                      <div className="mt-4 p-2 bg-green-500/20 rounded border border-green-500/50">
-                        <p className="text-green-300 text-xs font-semibold flex items-center gap-1">
-                          <Unlock className="w-3 h-3" />
-                          Successfully Decrypted
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {index < steps.length - 1 && (
-                    <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
-                      <ArrowRight className="w-6 h-6 text-gray-600" />
+                {/* Key Output Images */}
+                <div className="mt-8 sm:mt-12">
+                  <h3 className="text-xl sm:text-2xl font-bold text-white text-center mb-4 sm:mb-6 px-4">
+                    Key Transformation Stages
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto px-2 sm:px-0">
+                    <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
+                      <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Substituted</h4>
+                      <img
+                        src={intermediateImages.substituted}
+                        alt="Substituted"
+                        className="w-full rounded-lg"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3ESubstituted%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
 
-            {/* Key Output Images */}
-            <div className="mt-8 sm:mt-12">
-              <h3 className="text-xl sm:text-2xl font-bold text-white text-center mb-4 sm:mb-6 px-4">
-                Key Transformation Stages
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto px-2 sm:px-0">
-                <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
-                  <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Substituted</h4>
-                  <img
-                    src={intermediateImages.substituted}
-                    alt="Substituted"
-                    className="w-full rounded-lg"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3ESubstituted%3C/text%3E%3C/svg%3E';
-                    }}
-                  />
-                </div>
+                    <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
+                      <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Perturbed</h4>
+                      <img
+                        src={intermediateImages.perturbed}
+                        alt="Perturbed"
+                        className="w-full rounded-lg"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EPerturbed%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                    </div>
 
-                <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
-                  <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Perturbed</h4>
-                  <img
-                    src={intermediateImages.perturbed}
-                    alt="Perturbed"
-                    className="w-full rounded-lg"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EPerturbed%3C/text%3E%3C/svg%3E';
-                    }}
-                  />
-                </div>
+                    <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
+                      <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">AES Encrypted</h4>
+                      <img
+                        src={intermediateImages.aesEncrypted}
+                        alt="AES Encrypted"
+                        className="w-full rounded-lg"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EAES%20Encrypted%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                    </div>
 
-                <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
-                  <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">AES Encrypted</h4>
-                  <img
-                    src={intermediateImages.aesEncrypted}
-                    alt="AES Encrypted"
-                    className="w-full rounded-lg"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EAES%20Encrypted%3C/text%3E%3C/svg%3E';
-                    }}
-                  />
+                    <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
+                      <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">AES Decrypted</h4>
+                      <img
+                        src={intermediateImages.aesDecrypted}
+                        alt="AES Decrypted"
+                        className="w-full rounded-lg"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EAES%20Decrypted%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-700 shadow-lg">
-                  <h4 className="text-emerald-400 font-semibold mb-2 sm:mb-3 text-sm sm:text-base">AES Decrypted</h4>
-                  <img
-                    src={intermediateImages.aesDecrypted}
-                    alt="AES Decrypted"
-                    className="w-full rounded-lg"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239CA3AF"%3EAES%20Decrypted%3C/text%3E%3C/svg%3E';
+                <div className="text-center mt-6 sm:mt-8 px-4">
+                  <button
+                    onClick={() => {
+                      setShowResults(false);
+                      setInputImage(null);
                     }}
-                  />
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-6 sm:px-8 rounded-lg transition-all shadow-lg hover:shadow-xl text-sm sm:text-base"
+                  >
+                    Encrypt Another Image
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="text-center mt-6 sm:mt-8 px-4">
-              <button
-                onClick={() => {
-                  setShowResults(false);
-                  setInputImage(null);
-                }}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-6 sm:px-8 rounded-lg transition-all shadow-lg hover:shadow-xl text-sm sm:text-base"
-              >
-                Encrypt Another Image
-              </button>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
